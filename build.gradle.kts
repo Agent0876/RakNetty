@@ -29,12 +29,12 @@ subprojects {
     }
 
     // Sources & Javadoc JARs (Maven Central 필수 요건)
-    val sourcesJar by tasks.registering(Jar::class) {
+    val sourcesJar = tasks.register<Jar>("sourcesJar") {
         archiveClassifier.set("sources")
         from(project.the<SourceSetContainer>()["main"].allSource)
     }
 
-    val javadocJar by tasks.registering(Jar::class) {
+    val javadocJar = tasks.register<Jar>("javadocJar") {
         archiveClassifier.set("javadoc")
         // Kotlin 프로젝트에서는 빈 javadoc jar 허용
         from(tasks.named("javadoc"))
@@ -79,30 +79,21 @@ subprojects {
         repositories {
             maven {
                 name = "CentralPortal"
-                val releasesUrl = uri("https://central.sonatype.com/api/v1/publisher/upload")
-                url = releasesUrl
+                url = uri("https://central.sonatype.com/api/v1/publisher/upload")
                 credentials {
-                    username = providers.gradleProperty("sonatypeUsername")
-                        .orElse(providers.environmentVariable("SONATYPE_USERNAME"))
-                        .orNull
-                    password = providers.gradleProperty("sonatypePassword")
-                        .orElse(providers.environmentVariable("SONATYPE_PASSWORD"))
-                        .orNull
+                    username = System.getenv("SONATYPE_USERNAME")
+                    password = System.getenv("SONATYPE_PASSWORD")
                 }
             }
         }
     }
 
     extensions.configure<SigningExtension> {
-        val signingKey = providers.gradleProperty("signing.key")
-            .orElse(providers.environmentVariable("SIGNING_KEY"))
-            .orNull
-        val signingPassword = providers.gradleProperty("signing.password")
-            .orElse(providers.environmentVariable("SIGNING_PASSWORD"))
-            .orNull
-        if (signingKey != null && signingPassword != null) {
+        val signingKey = System.getenv("SIGNING_KEY")
+        val signingPassword = System.getenv("SIGNING_PASSWORD")
+        if (!signingKey.isNullOrBlank() && !signingPassword.isNullOrBlank()) {
             useInMemoryPgpKeys(signingKey, signingPassword)
+            sign(extensions.getByType<PublishingExtension>().publications["mavenJava"])
         }
-        sign(extensions.getByType<PublishingExtension>().publications["mavenJava"])
     }
 }
